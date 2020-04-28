@@ -1,0 +1,180 @@
+
+/* This is a sample dynamic Embedded SQL program. In order to run it,
+   You need to do the following. 
+
+1. Edit this file with correct oracle username and password 
+2. proc q3.pc
+3. cc -c q3.c -I/usr/include/oracle/11.2/client64
+4. cc -o q3 q3.o -L/usr/lib/oracle/11.2/client64/lib -lclntsh
+5. ./q3
+*/
+
+
+#include <stdio.h>
+exec sql include sqlca;
+exec sql begin declare section;
+  char sqlstmt[1024];
+  char sqlstmt2[1024];
+  
+/* supplier buffers */
+  
+  char sno[20];
+  char sname[20];
+  int  status;
+  char city[20];
+  
+/* part buffers */
+
+  char pno[20];
+  char pname[20];
+  char color[20];
+  float weight;
+  char pcity[20];
+
+/* SP buffers  */     
+    
+  char snum[20];
+  char pnum[20];
+  int  qty; 
+  
+     
+     
+  
+ char *username= "fedora";
+ char *password= "oracle";
+exec sql end declare section;
+
+int main() {
+  
+  exec sql connect :username identified by :password;
+  if (sqlca.sqlcode == 0)
+      printf("Oracle connected\n");    
+  else
+      printf("Oracle not connected\n");
+      
+      
+      
+      
+       
+
+/*  create table supplier 	*/
+  strcpy(sqlstmt, "create table supplier (s# char(4),sname varchar2(10),status  int,city varchar2(20),primary key (s#))");
+
+  exec sql set transaction read write;
+  exec sql execute immediate :sqlstmt;
+  if (sqlca.sqlcode == 0)
+      printf("Table supplier created \n");    
+  else
+      printf("Table supplier not created\n");
+     
+ 
+ 
+ 
+/* create table part  */
+  strcpy(sqlstmt, "create table part (p# char(4),pname varchar2(10),color varchar2(10),weight  float,pcity varchar2(20),primary key (p#))");
+
+  exec sql set transaction read write;
+  exec sql execute immediate :sqlstmt;
+  if (sqlca.sqlcode == 0)
+      printf("Table part created \n");    
+  else
+      printf("Table part not created\n");    
+     
+     
+     
+     
+     
+/* create table SP  */
+  strcpy(sqlstmt, "create table SP (s# char(4),p# char(4),QTY  int,primary key (s#,p#),foreign key (s#) references supplier (s#),foreign key (p#) references part (p#))");
+
+  exec sql set transaction read write;
+  exec sql execute immediate :sqlstmt;
+  if (sqlca.sqlcode == 0)
+      printf("Table SP created \n");    
+  else
+      printf("Table SP not created\n");    
+     
+                
+ 
+
+
+
+
+  strcpy(sqlstmt, "select * from supplier order by s#");
+  exec sql prepare z from :sqlstmt;
+  exec sql declare a_cursor cursor for z;
+  
+  
+  
+  
+
+  exec sql open a_cursor;
+
+  
+  
+  exec sql fetch a_cursor into :sno, :sname, :status, :city;
+  while(sqlca.sqlcode==0) {
+  printf("=====================================SUPPLIER=============================================\n");
+    
+    printf("%5s %5s %5d %5s\n", sno, sname, status, city);
+    printf("----------------------------------------------------------------------------------------\n\n");
+    
+    strcpy(sqlstmt2, "select * from part where exists(select * from SP S where S.s# =:sno and S.p# = part.p#) order by part.p#");
+    exec sql prepare f from :sqlstmt2;
+    exec sql declare b_cursor cursor for f;
+    exec sql open b_cursor using :sno;
+    
+    
+    exec sql fetch b_cursor into :pno, :pname, :color, :weight, :pcity;
+    printf("======================================PARTS SUPPLIED=====================================\n");
+    while(sqlca.sqlcode==0){
+    
+    printf("%5s %5s %5s %5f %5s\n", pno, pname, color, weight, pcity);
+   
+    
+    exec sql fetch b_cursor into :pno, :pname, :color, :weight, :pcity;
+    
+    
+    }
+     printf("---------------------------------------------------------------------------------------\n\n\n");
+    exec sql close b_cursor;
+    
+    exec sql fetch a_cursor into :sno, :sname, :status, :city;
+  }
+  
+  exec sql close a_cursor;
+
+
+
+
+      
+/*  drop table SP using dynamic SQL method 1	*/
+  exec sql execute immediate "drop table SP";
+  if (sqlca.sqlcode == 0)
+      printf("Table dropped \n");    
+  else
+      printf("Table not dropped \n");      
+           
+         
+     
+/*  drop table supplier using dynamic SQL method 1	*/
+  exec sql execute immediate "drop table supplier";
+  if (sqlca.sqlcode == 0)
+      printf("Table dropped \n");    
+  else
+      printf("Table not dropped \n");  
+      
+      
+      
+/*  drop table part using dynamic SQL method 1	*/
+  exec sql execute immediate "drop table part";
+  if (sqlca.sqlcode == 0)
+      printf("Table dropped \n");    
+  else
+      printf("Table not dropped \n");      
+      
+      
+   
+  exec sql commit release;
+  exit(0);
+}
